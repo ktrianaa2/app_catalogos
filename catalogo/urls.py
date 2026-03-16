@@ -6,6 +6,6 @@ router = DefaultRouter()
 router.register(r'imagenes', ImagenViewSet)
 
 urlpatterns = [
-    path('', index, name='index'),         
-    path('api/classify/', classify_local),             
+    path('', index, name='index'),         # frontend en /
+    path('classify/', classify_local),     # → /api/classify/
 ] + router.urls

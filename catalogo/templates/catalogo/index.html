@@ -136,7 +136,8 @@
     }
     .drop-zone .dz-icon { font-size: 2rem; display: block; margin-bottom: 0.5rem; }
     .drop-zone .dz-text { font-size: 0.75rem; color: var(--muted); }
-    .drop-zone .dz-name { font-size: 0.8rem; color: var(--accent); margin-top: 0.4rem; font-weight: 500; }
+    .drop-zone .dz-name { font-size: 0.8rem; color: var(--accent); margin-top: 0.5rem; font-weight: 500; }
+    #dzPreview { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
 
     /* Buttons */
     .btn {
@@ -320,12 +321,18 @@
           <label>Archivo de imagen</label>
           <div class="drop-zone" id="dropZone">
             <input type="file" id="inputArchivo" accept="image/*" />
-            <span class="dz-icon">🖼</span>
-            <span class="dz-text">Arrastra o haz clic para seleccionar</span>
-            <div class="dz-name" id="dzName"></div>
+            <!-- Estado vacío -->
+            <div id="dzEmpty">
+              <span class="dz-icon">🖼</span>
+              <span class="dz-text">Arrastra o haz clic para seleccionar</span>
+            </div>
+            <!-- Vista previa (oculta hasta seleccionar) -->
+            <div id="dzPreview" style="display:none">
+              <img id="previewImg" style="max-width:100%;max-height:180px;border-radius:3px;object-fit:contain;" />
+              <div class="dz-name" id="dzName"></div>
+            </div>
           </div>
         </div>
-
         <hr>
 
         <!-- Classify via Lambda -->
@@ -434,9 +441,30 @@
 
   function updateDZName() {
     const f = inputArchivo.files[0];
-    document.getElementById('dzName').textContent = f ? f.name : '';
-    if (f && !document.getElementById('inputNombre').value)
+    if (!f) {
+      document.getElementById('dzEmpty').style.display = '';
+      document.getElementById('dzPreview').style.display = 'none';
+      document.getElementById('previewImg').src = '';
+      document.getElementById('dzName').textContent = '';
+      return;
+    }
+    if (!document.getElementById('inputNombre').value)
       document.getElementById('inputNombre').value = f.name.replace(/\.[^.]+$/, '');
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('previewImg').src = e.target.result;
+      document.getElementById('dzName').textContent = f.name;
+      document.getElementById('dzEmpty').style.display = 'none';
+      document.getElementById('dzPreview').style.display = 'flex';
+    };
+    reader.readAsDataURL(f);
+  }
+
+    // ── CSRF helper ─────────────────────────────────────────────
+  function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(^|;\s*)' + name + '=([^;]*)'));
+    return match ? decodeURIComponent(match[2]) : '';
   }
 
   // ── Classify ─────────────────────────────────────────────
@@ -444,34 +472,38 @@
     const file = inputArchivo.files[0];
     if (!file) { toast('Selecciona una imagen primero', 'error'); return; }
 
-    const btn = document.getElementById('btnClasificar');
+    const btn    = document.getElementById('btnClasificar');
     const status = document.getElementById('classifyStatus');
     setLoading(btn, true);
     status.className = '';
     status.textContent = 'Clasificando…';
 
     try {
-      const b64 = await toBase64(file);
-      const resp = await fetch(LAMBDA_URL || '/api/classify/', {
+      const b64  = await toBase64(file);
+      const resp = await fetch('/api/classify/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image_b64: b64.split(',')[1], filename: file.name })
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify({ image_b64: b64, filename: file.name })
       });
-      if (!resp.ok) throw new Error('Lambda error ' + resp.status);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       document.getElementById('inputTipo').value = data.tipo_detectado || '';
-      document.getElementById('inputDesc').value = data.descripcion || '';
+      document.getElementById('inputDesc').value = data.descripcion    || '';
       status.textContent = '✓ Clasificado: ' + (data.tipo_detectado || 'desconocido');
-      status.className = 'ok';
+      status.className   = 'ok';
+      toast('Clasificación completada ✓');
     } catch (e) {
-      status.textContent = '✗ No se pudo clasificar. Completa manualmente.';
-      status.className = 'err';
+      status.textContent = '✗ Error al clasificar: ' + e.message;
+      status.className   = 'err';
     } finally {
       setLoading(btn, false);
     }
   });
 
-  function toBase64(file) {
+    function toBase64(file) {
     return new Promise((res, rej) => {
       const r = new FileReader();
       r.onload = () => res(r.result);
@@ -502,6 +534,9 @@
       document.getElementById('inputNombre').value = '';
       document.getElementById('inputTipo').value = '';
       document.getElementById('inputDesc').value = '';
+      document.getElementById('dzEmpty').style.display = '';
+      document.getElementById('dzPreview').style.display = 'none';
+      document.getElementById('previewImg').src = '';
       document.getElementById('dzName').textContent = '';
       inputArchivo.value = '';
       document.getElementById('classifyStatus').textContent = '';
