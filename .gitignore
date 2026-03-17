@@ -6,3 +6,7 @@ db.sqlite3
 media/
 .env
 *.log" > .gitignore
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml

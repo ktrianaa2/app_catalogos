@@ -65,7 +65,7 @@ def classify_local(request):
 def classify_with_gemini(image_b64: str, mime_type: str, api_key: str) -> dict:
     url = (
         "https://generativelanguage.googleapis.com/v1beta/models/"
-        f"gemini-2.0-flash:generateContent?key={api_key}"
+        f"gemini-2.5-flash:generateContent?key={api_key}"
     )
     prompt = (
         "Clasifica esta imagen en una de estas categorías: "

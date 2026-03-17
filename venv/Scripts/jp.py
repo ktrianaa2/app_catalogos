@@ -1,4 +1,4 @@
-#!c:\users\sala207_pc10\desktop\app_catalogo\venv\scripts\python.exe
+#!C:\Users\mikae\Desktop\app_catalogo\venv\Scripts\python.exe
 
 import sys
 import json
