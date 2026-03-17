@@ -1,11 +1,11 @@
-echo "venv/
+venv/
 __pycache__/
 *.pyc
 *.pyo
 db.sqlite3
 media/
 .env
-*.log" > .gitignore
+*.log
 # Elastic Beanstalk Files
 .elasticbeanstalk/*
 !.elasticbeanstalk/*.cfg.yml
